@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ExSys World Cup 26</title>
+  <link rel="stylesheet" href="style.css?v32-hero" />
+</head>
+<body>
+  <div id="gate" class="gate hidden">
+    <div class="card gate-card">
+      <h1>🔒 ExSys World Cup 26</h1>
+      <p>Necesitas entrar con el enlace privado correcto.</p>
+      <p class="muted">Ejemplo: <code>?clave=exsys26</code></p>
+    </div>
+  </div>
+
+  <header class="exsys-hero-v32">
+    <div class="exsys-hero-orb exsys-hero-orb-one"></div>
+    <div class="exsys-hero-orb exsys-hero-orb-two"></div>
+
+    <div class="exsys-logo-panel-v32">
+      <span class="exsys-logo-tag">EXSYS</span>
+      <img class="exsys-main-logo-v32" src="assets/exsys-logo.png" alt="Logo ExSys World Cup 26" />
+      <span class="exsys-logo-chip">Liga privada</span>
+    </div>
+
+    <div class="exsys-hero-content-v32">
+      <p class="exsys-kicker-v32">Porra privada · Mundial 2026</p>
+      <h1>ExSys World Cup 26</h1>
+      <p class="exsys-subtitle-v32">Grupos, knockouts, premios y 11 ideal. Una oportunidad perfecta para equivocarte con total convicción.</p>
+      <div class="exsys-badges-v32" aria-label="Características de la porra">
+        <span>🔒 Acceso privado</span>
+        <span>🏆 Mundial 2026</span>
+        <span>☕ Debate garantizado</span>
+      </div>
+    </div>
+
+    <aside class="exsys-info-panel-v32" aria-label="Información de la porra">
+      <div class="exsys-stat-v32">
+        <span>Cierre edición</span>
+        <strong id="deadlineCountdown">—</strong>
+      </div>
+      <div class="exsys-stat-row-v32">
+        <div class="exsys-stat-v32 mini">
+          <span>Formato</span>
+          <strong>48 selecciones</strong>
+        </div>
+        <div class="exsys-stat-v32 mini">
+          <span>Modo</span>
+          <strong>Privado</strong>
+        </div>
+      </div>
+      <div class="exsys-actions-v32">
+        <button class="button secondary" id="rulesModalBtn" type="button">📋 Cómo se puntúa</button>
+        <a class="button secondary" href="admin.html">Panel admin</a>
+        <button class="button" id="refreshBtn">Actualizar</button>
+      </div>
+    </aside>
+  </header>
+
+  <main class="layout">
+    <section id="lockedBanner" class="locked-banner hidden">🔒 Edición cerrada. Tu porra ya está bloqueada. Ahora empieza lo bueno.</section>
+    <section class="card login-card" id="loginCard">
+      <h2>1. Identifícate</h2>
+      <p class="muted">Crea tu usuario la primera vez o entra con tu PIN para editar tu predicción.</p>
+
+      <div class="mode-selector" role="group" aria-label="Modo de acceso">
+        <button type="button" class="mode-card active" id="newUserBtn" data-mode="register">
+          <span class="mode-icon">🆕</span>
+          <strong>Nuevo usuario</strong>
+          <small>Crear mi nombre y PIN</small>
+        </button>
+        <button type="button" class="mode-card" id="editPredictionBtn" data-mode="edit">
+          <span class="mode-icon">✏️</span>
+          <strong>Editar predicción</strong>
+          <small>Entrar con mi PIN</small>
+        </button>
+      </div>
+
+      <div class="grid two">
+        <label>Nombre visible
+          <input id="playerName" placeholder="Ej. Iker" autocomplete="username" />
+        </label>
+        <label>PIN libre
+          <input id="playerPin" placeholder="El PIN que quieras" type="password" autocomplete="current-password" />
+        </label>
+      </div>
+      <div class="avatar-picker" id="avatarPicker" aria-label="Elige tu perfil corporativo">
+        <span>Elige tu perfil corporativo:</span>
+        <button type="button" class="avatar-option active" data-avatar="🐀">🧑‍💼 Reunión eterna</button>
+        <button type="button" class="avatar-option" data-avatar="🧀">📊 Excelero</button>
+        <button type="button" class="avatar-option" data-avatar="💸">☕ Café pendiente</button>
+        <button type="button" class="avatar-option" data-avatar="⚽">⚽ Futbolero</button>
+        <button type="button" class="avatar-option" data-avatar="😭">📩 “Lo vemos”</button>
+      </div>
+      <p class="muted" id="authHelp">Si es tu primera vez, se creará tu usuario con ese PIN. Acuérdate bien: lo necesitarás para editar.</p>
+      <p class="forgot-pin">¿Has olvidado tu PIN? Pide a Iker que te lo resetee desde el panel admin.</p>
+      <button class="button" id="loginBtn">Crear usuario y entrar</button>
+      <div id="loginMsg" class="message"></div>
+    </section>
+
+    <section class="card status-card" id="statusCard">
+      <h2>Estado</h2>
+      <div class="status-grid">
+        <div><span class="label">Jugador</span><strong id="currentPlayer">—</strong></div>
+        <div><span class="label">Edición</span><strong id="editStatus">—</strong></div>
+        <div><span class="label">Tu porra</span><strong id="submittedStatus">—</strong></div>
+      </div>
+      <div id="closedBanner" class="closed-banner hidden">🔒 Edición cerrada. Tu porra ya está bloqueada. Ahora empieza lo bueno.</div>
+      <div id="progressDashboard" class="progress-dashboard"></div>
+      <div id="autosaveStatus" class="autosave-status">💾 Borrador local: todavía sin guardar</div>
+      <div id="completionChecklist" class="completion-checklist"></div>
+    </section>
+
+    <nav class="tabs">
+      <button data-tab="prediccion" class="active">Mi porra</button>
+      <button data-tab="resumen">Mi resumen</button>
+      <button data-tab="ranking">Ranking</button>
+      <button data-tab="participantes">Participantes</button>
+      <button data-tab="mando">Centro de mando</button>
+      <button data-tab="impacto">Impacto en vivo</button>
+      <button data-tab="predicciones">Predicciones amigos</button>
+      <button data-tab="comparativa">Comparativa ExSys</button>
+      <button data-tab="estadisticas">Estadísticas</button>
+      <button data-tab="normas">Puntuación</button>
+    </nav>
+
+    <section id="tab-prediccion" class="tab-panel active">
+      <form id="predictionForm">
+        <section class="card section-card">
+          <div class="section-heading groups-heading">
+            <div>
+              <h2><span class="accent-bar"></span>🌍 Fase de grupos</h2>
+              <p>Pincha un grupo, mete tus marcadores y deja que la tabla haga matemáticas. Tú bastante tienes con sobrevivir a otra reunión de seguimiento.</p>
+            </div>
+            <button type="button" class="button secondary small" id="nextIncompleteBtn">Ir al siguiente incompleto</button>
+          </div>
+          <div id="groupCardsContainer" class="group-cards-grid"></div>
+        </section>
+
+        <section class="card section-card" id="groupEditorCard">
+          <div class="section-heading compact">
+            <h2>🗓️ Partidos del grupo <span id="activeGroupLabel">A</span></h2>
+            <p>Mete los goles con cariño: la clasificación y el bracket se mueven solos, como ese compañero que aparece justo cuando ya está todo hecho.</p>
+          </div>
+          <div id="activeGroupMatches"></div>
+          <div id="activeGroupStandings"></div>
+        </section>
+
+        <section class="card section-card">
+          <div class="section-heading">
+            <h2><span class="accent-bar"></span>🥊 Knockouts</h2>
+            <p>Los dieciseisavos salen de los grupos, no de una reunión sin acta. A partir de ahí, clic en quien pasa y que el PowerPoint reparta justicia.</p>
+          </div>
+          <div id="bracketNotice" class="notice"></div>
+          <div id="knockoutTree" class="bracket-scroll"></div>
+        </section>
+
+        <section class="card section-card">
+          <div class="section-heading">
+            <h2><span class="accent-bar"></span>⭐ Premios individuales</h2>
+            <p>Escribe tus candidatos. Si no lo tienes claro, puedes dejarlo en blanco: decisión muy corporativa, todo sea dicho.</p>
+          </div>
+          <div class="awards-grid">
+            <div class="award-card"><h3>🏆 Balón de Oro</h3><p>Mejor jugador del torneo</p><input name="goldenBall1" placeholder="1º"/><input name="goldenBall2" placeholder="2º"/><input name="goldenBall3" placeholder="3º"/></div>
+            <div class="award-card"><h3>🥾 Bota de Oro</h3><p>Máximo goleador</p><input name="goldenBoot1" placeholder="1º"/><input name="goldenBoot2" placeholder="2º"/><input name="goldenBoot3" placeholder="3º"/></div>
+            <div class="award-card"><h3>🧤 Guante de Oro</h3><p>Mejor portero</p><input name="goldenGlove1" placeholder="1º"/><input name="goldenGlove2" placeholder="2º"/><input name="goldenGlove3" placeholder="3º"/></div>
+            <div class="award-card"><h3>🌟 Mejor Jugador Joven</h3><p>Premio al mejor joven</p><input name="bestYoung1" placeholder="1º"/><input name="bestYoung2" placeholder="2º"/><input name="bestYoung3" placeholder="3º"/></div>
+          </div>
+        </section>
+
+        <section class="card section-card">
+          <div class="section-heading">
+            <h2><span class="accent-bar"></span>⚽ 11 ideal del torneo</h2>
+            <p>3 puntos por jugador acertado. Se muestra como una formación 4-3-3.</p>
+          </div>
+          <div id="bestXIFormation" class="football-pitch"></div>
+        </section>
+
+        <section class="sticky-actions">
+          <button type="button" class="button secondary" id="saveDraftBtn">Guardar borrador local</button>
+          <button type="button" class="button secondary" id="loadDraftBtn">Recuperar borrador</button>
+          <button type="button" class="button secondary" id="summaryBtn">Ver mi resumen</button>
+          <button type="button" class="button secondary" id="randomRatBtn">🎲 Predicción aleatoria corporativa</button>
+          <button type="submit" class="button big" id="savePredictionBtn">Guardar mi porra</button>
+          <span id="saveMsg" class="message"></span>
+        </section>
+      </form>
+    </section>
+
+    <section id="tab-resumen" class="tab-panel">
+      <section class="card">
+        <h2>📋 Mi resumen</h2>
+        <p class="muted">Revisión rápida de tu entregable: campeón, finalistas, grupos, premios y 11 ideal. Última oportunidad para no escalar el ridículo al grupo.</p>
+        <div class="summary-actions">
+          <button type="button" class="button secondary" id="copyPredictionBtn">📲 Copiar mi predicción para WhatsApp</button>
+        </div>
+        <div id="predictionReceipt" class="receipt-box hidden"></div>
+        <div id="mySummaryContainer"></div>
+      </section>
+    </section>
+
+
+    <section id="tab-ranking" class="tab-panel">
+      <section class="card">
+        <h2>🏆 Ranking</h2>
+        <div id="rankingContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-participantes" class="tab-panel">
+      <section class="card">
+        <h2>👥 Participantes</h2>
+        <p class="muted">El tablón de asistencia: aquí se ve quién ha cumplido y quién necesita un recordatorio “amable”, de esos que parecen correo de RRHH.</p>
+        <div id="participantsContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-mando" class="tab-panel">
+      <section class="card command-card">
+        <h2>🐀 Centro de mando ExSys</h2>
+        <p class="muted">La sala donde ExSys cruza datos, detecta visionarios, señala morosos y reparte etiquetas con la delicadeza de una auditoría interna.</p>
+        <div id="commandCenterContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-impacto" class="tab-panel">
+      <section class="card">
+        <h2>🧮 Impacto en vivo</h2>
+        <p class="muted">Simulador de daños: elige un partido y mira quién puede rascar puntos. No cura disgustos, pero los cuantifica.</p>
+        <div id="liveImpactContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-predicciones" class="tab-panel">
+      <section class="card">
+        <h2>👀 Predicciones de los amigos</h2>
+        <p class="muted">Bloqueadas hasta el cierre oficial. ExSys no deja copiar predicciones, que luego todos “lo tenían clarísimo desde la kickoff”.</p>
+        <div id="friendsPredictionsContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-comparativa" class="tab-panel">
+      <section class="card compare-page-card">
+        <h2>⚔️ Comparativa ExSys</h2>
+        <p class="muted">El rincón del salseo corporativo: compara dos porras y descubre quién trabaja con datos y quién con fe, intuición y calendario de Outlook.</p>
+        <div id="compareContainer"></div>
+      </section>
+    </section>
+
+    <section id="tab-estadisticas" class="tab-panel">
+      <section class="card">
+        <h2>📊 Estadísticas globales</h2>
+        <p class="muted">Tendencias de la liga cuando la plantilla ya ha soltado su verdad futbolística, con más fe que datos, como en tantos forecasts.</p>
+        <div id="globalStatsContainer"></div>
+      </section>
+    </section>
+
+
+    <section id="tab-normas" class="tab-panel">
+      <section class="card">
+        <h2>❓ Cómo se puntúa</h2>
+        <div class="rules-grid">
+          <div class="rule-box"><h3>🌍 Fase de grupos</h3><ul><li>Resultado exacto de partido: <strong>4 pts</strong></li><li>Ganador/empate correcto: <strong>2 pts</strong></li><li>1º exacto de grupo: <strong>5 pts</strong></li><li>2º exacto de grupo: <strong>3 pts</strong></li><li>3º exacto de grupo: <strong>1 pt</strong></li></ul></div>
+          <div class="rule-box"><h3>🥊 Eliminatorias</h3><ul><li>Equipo en dieciseisavos: <strong>3 pts</strong></li><li>Equipo en octavos: <strong>5 pts</strong></li><li>Equipo en cuartos: <strong>7 pts</strong></li><li>Equipo en semifinales: <strong>10 pts</strong></li><li>Finalista: <strong>18 pts</strong></li><li>Campeón: <strong>+25 pts</strong></li><li>Tercer puesto: <strong>12 pts</strong></li></ul></div>
+          <div class="rule-box"><h3>⭐ Premios</h3><ul><li>Bota de Oro: <strong>10 / 6 / 3 pts</strong></li><li>Balón de Oro: <strong>10 / 6 / 3 pts</strong></li><li>Guante de Oro: <strong>8 / 5 / 2 pts</strong></li><li>Mejor joven: <strong>8 / 5 / 2 pts</strong></li><li>11 ideal: <strong>3 pts por jugador</strong></li></ul></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+
+  <div id="reviewModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+    <div class="modal-card">
+      <h2 id="reviewTitle">Última revisión antes de escalarlo</h2>
+      <p class="muted">Mira bien tu porra. Luego no vale decir “yo no puse eso”, que esto queda más trazado que un ticket de soporte.</p>
+      <div id="reviewSummary" class="review-summary"></div>
+      <div class="modal-actions">
+        <button type="button" class="button secondary" id="cancelReviewBtn">Volver a editar</button>
+        <button type="button" class="button big" id="confirmSaveBtn">Confirmar y guardar, responsable del entregable</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rulesModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="modal-card rules-modal-card">
+      <div class="modal-title-row">
+        <div>
+          <h2 id="rulesTitle">📋 Cómo se puntúa</h2>
+          <p class="muted">Normas oficiales de ExSys. Aquí no hay VAR ni comité de excepción: lo que pone aquí queda aprobado en acta.</p>
+        </div>
+        <button type="button" class="icon-close" id="closeRulesModalBtn" aria-label="Cerrar">×</button>
+      </div>
+      <div class="rules-grid rules-grid-modal">
+        <div class="rule-box"><h3>🌍 Fase de grupos</h3><ul><li>Resultado exacto: <strong>4 pts</strong></li><li>Ganador/empate correcto: <strong>2 pts</strong></li><li>1º exacto de grupo: <strong>5 pts</strong></li><li>2º exacto de grupo: <strong>3 pts</strong></li><li>3º exacto de grupo: <strong>1 pt</strong></li></ul></div>
+        <div class="rule-box"><h3>🥊 Eliminatorias</h3><ul><li>Dieciseisavos: <strong>3 pts</strong></li><li>Octavos: <strong>5 pts</strong></li><li>Cuartos: <strong>7 pts</strong></li><li>Semifinales: <strong>10 pts</strong></li><li>Finalista: <strong>18 pts</strong></li><li>Campeón: <strong>25 pts</strong></li><li>Tercer puesto: <strong>12 pts</strong></li></ul></div>
+        <div class="rule-box"><h3>⭐ Premios</h3><ul><li>Bota de Oro: <strong>10 / 6 / 3 pts</strong></li><li>Balón de Oro: <strong>10 / 6 / 3 pts</strong></li><li>Guante de Oro: <strong>8 / 5 / 2 pts</strong></li><li>Mejor joven: <strong>8 / 5 / 2 pts</strong></li><li>11 ideal: <strong>3 pts por jugador</strong></li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <footer><p>Hecho para ExSys World Cup 26 · GitHub Pages + Google Sheets</p></footer>
+
+  <script src="config.js?v31-20260522"></script>
+  <script src="data/worldcup2026.js?v25-20260522"></script>
+  <script src="app.js?v31-20260522"></script>
+</body>
+</html>

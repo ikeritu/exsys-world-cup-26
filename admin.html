@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin · ExSys World Cup 26</title>
+  <link rel="stylesheet" href="style.css?v31-20260522" />
+</head>
+<body class="admin-page admin-locked">
+<header class="hero">
+  <div>
+    <p class="eyebrow">Panel administrador</p>
+    <h1>⚙️ Admin ExSys World Cup 26</h1>
+    <p>Introduce resultados reales, premios, resetea PINs olvidados y borra usuarios si hace falta.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="index.html?clave=exsys26">Volver a la porra</a>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="card">
+    <h2>Acceso admin</h2>
+    <div class="admin-toolbar">
+      <label>Clave admin
+        <input id="adminKey" type="password" placeholder="Clave admin" />
+      </label>
+      <button class="button" id="loadAdminBtn">Cargar datos</button>
+      <span id="adminMsg" class="message"></span>
+    </div>
+    <p class="muted">Introduce la clave de administrador para desbloquear el panel.</p>
+  </section>
+
+  <section class="admin-grid admin-protected">
+    <section class="card admin-results-card">
+      <h2>Resultados reales de partidos</h2>
+      <p class="muted">Rellena goles reales. Puedes guardar poco a poco.</p>
+      <div id="adminResultsContainer"></div>
+      <div class="save-row"><button class="button" id="saveResultsBtn">Guardar resultados</button><button class="button secondary" id="calcR32Btn" type="button">Calcular dieciseisavos reales</button></div>
+    </section>
+
+    
+  <section class="card admin-ko-card">
+    <h2>Eliminatorias reales</h2>
+    <p class="muted">Los dieciseisavos se pueden calcular automáticamente al completar todos los resultados de grupos. El resto de rondas se rellena cuando avance el torneo.</p>
+    <div class="admin-ko-grid">
+      <label>Dieciseisavos reales, 32 equipos <textarea id="realKoR32" rows="3" placeholder="Se calculan automáticamente desde los resultados de grupos"></textarea></label>
+      <label>Octavos reales, 16 equipos <textarea id="realKoR16" rows="3" placeholder="Equipo 1, Equipo 2, ..."></textarea></label>
+      <label>Cuartos reales, 8 equipos <textarea id="realKoQF" rows="2"></textarea></label>
+      <label>Semifinales reales, 4 equipos <textarea id="realKoSF" rows="2"></textarea></label>
+      <label>Finalistas reales, 2 equipos <input id="realKoFinalists" placeholder="Finalista 1, Finalista 2" /></label>
+      <label>Campeón <input id="realKoChampion" placeholder="Campeón" /></label>
+      <label>Tercer puesto <input id="realKoThird" placeholder="Tercer puesto" /></label>
+    </div>
+  </section>
+
+    <section class="card admin-awards-card">
+      <h2>Premios reales</h2>
+      <div class="admin-awards-grid">
+        <label>Bota de Oro 1º <input id="realGoldenBoot1" /></label>
+        <label>Bota de Oro 2º <input id="realGoldenBoot2" /></label>
+        <label>Bota de Oro 3º <input id="realGoldenBoot3" /></label>
+        <label>Balón de Oro 1º <input id="realGoldenBall1" /></label>
+        <label>Balón de Oro 2º <input id="realGoldenBall2" /></label>
+        <label>Balón de Oro 3º <input id="realGoldenBall3" /></label>
+        <label>Guante de Oro 1º <input id="realGoldenGlove1" /></label>
+        <label>Guante de Oro 2º <input id="realGoldenGlove2" /></label>
+        <label>Guante de Oro 3º <input id="realGoldenGlove3" /></label>
+        <label>Mejor Jugador Joven 1º <input id="realBestYoung1" /></label>
+        <label>Mejor Jugador Joven 2º <input id="realBestYoung2" /></label>
+        <label>Mejor Jugador Joven 3º <input id="realBestYoung3" /></label>
+      </div>
+      <h3>11 ideal real</h3>
+      <div id="realBestXIContainer" class="xi-grid"></div>
+      <button class="button" id="saveAwardsBtn">Guardar premios</button>
+    </section>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>Exportaciones y control</h2>
+    <div class="admin-toolbar">
+      <button class="button secondary" id="exportRankingBtn">Exportar ranking CSV</button>
+      <button class="button secondary" id="exportHistoryBtn">Exportar historial CSV</button>
+    </div>
+    <p class="muted">Carga datos primero. El historial guarda altas, cambios de predicción, reseteos de PIN y borrados.</p>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>👥 Participantes, pagos y avatares</h2>
+    <p class="muted">Marca quién ha pagado. Presión social sana, de la que en empresa se llama seguimiento proactivo.</p>
+    <div id="adminParticipantsContainer" class="admin-participants-container"></div>
+    <button class="button" id="saveParticipantsBtn" type="button">Guardar participantes/pagos</button>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>💰 Bote y premios</h2>
+    <div class="admin-awards-grid">
+      <label>Entrada por persona (€)<input id="potEntryFee" type="number" min="0" step="0.01" placeholder="10" /></label>
+      <label>% Primer puesto<input id="potFirst" type="number" min="0" max="100" placeholder="70" /></label>
+      <label>% Segundo puesto<input id="potSecond" type="number" min="0" max="100" placeholder="20" /></label>
+      <label>% Tercer puesto<input id="potThird" type="number" min="0" max="100" placeholder="10" /></label>
+    </div>
+    <div id="potPreview" class="pot-preview"></div>
+    <button class="button" id="savePotBtn" type="button">Guardar bote</button>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>Historial de cambios</h2>
+    <div id="historyContainer" class="history-container"><p class="muted">Carga datos para ver el historial.</p></div>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>Resetear PIN de jugador</h2>
+    <div class="admin-toolbar">
+      <label>Nombre del jugador
+        <input id="resetName" placeholder="Ej. Iker" />
+      </label>
+      <button class="button danger" id="resetPinBtn">Resetear PIN</button>
+    </div>
+    <p class="muted">Tras resetearlo, el jugador podrá crear un PIN nuevo al entrar otra vez.</p>
+  </section>
+
+  <section class="card admin-protected">
+    <h2>Borrar usuario</h2>
+    <div class="admin-toolbar">
+      <label>Nombre del jugador
+        <input id="deleteName" placeholder="Ej. Iker" />
+      </label>
+      <button class="button danger" id="deleteUserBtn">Borrar usuario y predicción</button>
+    </div>
+    <p class="muted">Esta acción elimina el usuario, su PIN y su predicción guardada. El ranking se recalcula después.</p>
+  </section>
+</main>
+
+<script src="config.js?v31-20260522"></script>
+<script src="data/worldcup2026.js?v25-20260522"></script>
+<script src="admin.js?v31-20260522"></script>
+</body>
+</html>
