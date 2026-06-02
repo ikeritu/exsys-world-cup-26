@@ -54,7 +54,7 @@ file:///C:/Users/ikeri/proyectos/exsys-world-cup-26/admin.html
 La clave admin local es:
 
 ```text
-XXXX
+2226
 ```
 
 ## Funcionamiento para jugadores
@@ -146,6 +146,23 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 - No se deben poner claves privadas reales en `config.js`.
 - La clave admin no aparece en claro en el frontend; la validación real debe hacerse en Apps Script.
 - La asignación de terceros usa un fallback compatible y común para frontend/admin. Para precisión FIFA 100%, falta cargar la tabla oficial completa de 495 combinaciones en `THIRD_PLACE_ASSIGNMENT_TABLE`.
+
+
+## v33 - Guardado de borradores en Google Sheets y auditoría
+
+- El botón principal ahora permite guardar aunque la porra esté incompleta.
+- Si faltan datos, la predicción se guarda como `meta.completionStatus = "draft"`.
+- Si está completa, se guarda como `meta.completionStatus = "complete"`.
+- Al volver a entrar con el mismo nombre y PIN, el usuario recupera la predicción guardada desde Google Sheets.
+- El modal de revisión avisa claramente si se está guardando un borrador incompleto.
+- El justificante muestra si lo guardado es borrador o predicción completa.
+- El estado de usuario diferencia entre `Pendiente`, `Borrador guardado` y `Completa`.
+- Añadido aviso por email al registrarse un usuario nuevo.
+- `notifyNewUser_()` no bloquea el alta si falla el envío de email; deja registro en `Logs`.
+- Añadido `google-apps-script/appsscript.json` con permisos explícitos de Sheets y envío de correo.
+- Actualizado cache-busting a `v33-draft-save`.
+- Ejecutada auditoría básica de sintaxis JS sobre `app.js`, `admin.js`, `config.js`, `worldcup2026.js` y `Code.gs`.
+
 
 ## Pendiente antes de publicar
 

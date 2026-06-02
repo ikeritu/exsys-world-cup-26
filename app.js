@@ -512,7 +512,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function updateStatus(){
   const cp = $("#currentPlayer"); if (cp) cp.textContent = state.player || "No identificado";
   const es = $("#editStatus"); if (es) es.textContent = isEditOpen() ? "Abierta hasta 10/06/2026" : "Cerrada";
-  const ss = $("#submittedStatus"); if (ss) ss.textContent = state.prediction ? "Enviada" : "Pendiente";
+  const ss = $("#submittedStatus");
+  if (ss) {
+    if (!state.prediction) ss.textContent = "Pendiente";
+    else ss.textContent = state.prediction?.meta?.completionStatus === "draft" ? "Borrador guardado" : "Completa";
+  }
   const sb = $("#savePredictionBtn"); if (sb) sb.disabled = !isEditOpen();
   const lb = $("#lockedBanner"); if (lb) lb.classList.toggle("hidden", isEditOpen());
   updateDeadlineCountdown();
@@ -792,15 +796,29 @@ async function savePrediction(ev){
   if (msg) { msg.textContent = ""; msg.className = "message"; }
   if (!state.player || !state.pin) return setMsg(msg, "Primero entra con tu nombre y PIN, que esto no va por telepatía.", false);
   if (!isEditOpen()) return setMsg(msg, "La edición está cerrada. Llegas tarde, como en las pachangas.", false);
+
   let prediction = collectPrediction();
   prediction = attachPredictionMetadata(prediction);
   const validation = validatePrediction(prediction);
+
+  prediction.meta = prediction.meta || {};
+  prediction.meta.completionStatus = validation.ok ? "complete" : "draft";
+  prediction.meta.missing = validation.missing || [];
+
   if (!validation.ok) {
     renderCompletionChecklist();
-    return setMsg(msg, "Faltan datos: " + validation.missing.slice(0,8).join(" · ") + (validation.missing.length > 8 ? "..." : "") + ". Respira, revisa y no culpes al sistema.", false);
+    setMsg(
+      msg,
+      "Borrador incompleto listo para guardar: faltan " +
+        validation.missing.slice(0,8).join(" · ") +
+        (validation.missing.length > 8 ? "..." : "") +
+        ". Puedes guardarlo y seguir otro día; ExSys no juzga, solo documenta.",
+      true
+    );
   }
+
   state.pendingPrediction = prediction;
-  showReviewModal(prediction);
+  showReviewModal(prediction, validation);
 }
 
 
@@ -809,6 +827,7 @@ async function savePrediction(ev){
 async function confirmSavePrediction(){
   const msg = document.getElementById("saveMsg");
   if (!state.pendingPrediction) return;
+  const isDraft = state.pendingPrediction?.meta?.completionStatus === "draft";
   try {
     await api("savePrediction", { name: state.player, pin: state.pin, prediction: state.pendingPrediction });
     state.prediction = state.pendingPrediction;
@@ -816,8 +835,14 @@ async function confirmSavePrediction(){
     clearDraftLocal(false);
     updateAutosaveStatus(null);
     closeReviewModal();
-    setMsg(msg, "ExSys ha registrado tu entregable ⚽📊. Luego no vengas con que “se envió solo”.", true);
-    toast("ExSys ha registrado tu entregable ⚽📊", "ok");
+    updateStatus();
+    renderParticipants();
+    renderMySummary();
+    const okMsg = isDraft
+      ? "Borrador guardado en Google Sheets. Puedes cerrar y volver luego; esta vez sí queda rastro, como debe ser."
+      : "ExSys ha registrado tu entregable ⚽📊. Luego no vengas con que “se envió solo”.";
+    setMsg(msg, okMsg, true);
+    toast(okMsg, "ok");
     await refreshState();
   } catch(e) { setMsg(msg, e.message, false); }
 }
@@ -939,13 +964,14 @@ function renderReceipt(pred){
   if(!pred || !pred.meta){ el.classList.add("hidden"); el.innerHTML=""; return; }
   const m=pred.meta;
   el.classList.remove("hidden");
+  const statusLabel = m.completionStatus === "draft" ? "Borrador incompleto guardado" : "Predicción completa guardada";
   el.innerHTML=`<h3>🧾 Justificante de predicción guardada</h3><div class="receipt-grid">
-    <div><span>Estado</span><strong>Predicción guardada correctamente</strong></div>
+    <div><span>Estado</span><strong>${statusLabel}</strong></div>
     <div><span>Fecha</span><strong>${formatDateTime(m.updatedAt)}</strong></div>
     <div><span>Código</span><strong>${escapeHtml(m.registrationCode)}</strong></div>
     <div><span>Versión</span><strong>v${escapeHtml(m.predictionVersion)}</strong></div>
     <div><span>Hash</span><strong>${escapeHtml(m.predictionHash)}</strong></div>
-  </div><p class="muted">Resguardo anti “yo no puse eso”. ExSys archiva, audita y juzga en silencio.</p>`;
+  </div><p class="muted">${m.completionStatus === "draft" ? "Borrador recuperable: puedes volver con tu PIN y terminarlo. ExSys guarda hasta las medias verdades." : "Resguardo anti “yo no puse eso”. ExSys archiva, audita y juzga en silencio."}</p>`;
 }
 function buildWhatsAppSummary(pred){
   pred=pred || state.prediction || collectPredictionSafe();
@@ -1549,16 +1575,21 @@ function sectionProgress(){
   return { matchesDone:p.matchDone, totalMatches:p.matchTotal, koDone:p.koDone, koTotal:p.koTotal, awardsDone:p.awardsDone, awardsTotal:p.awardsTotal, xiDone:p.xiDone, xiTotal:p.xiTotal };
 }
 
-function showReviewModal(prediction){
+function showReviewModal(prediction, validation={ok:true, missing:[]}){
   const msDone = Object.values(prediction.matchScores || {}).filter(sc => sc.home !== null && sc.away !== null && sc.home !== undefined && sc.away !== undefined).length;
   const ko = prediction.knockout || {}, aw = prediction.awards || {};
   const champion = (ko.champion || [])[0] || "—";
   const finalists = (ko.finalists || ko.final || []).filter(Boolean).join(" vs ") || "—";
   const third = (ko.third || [])[0] || "—";
   const review = document.getElementById("reviewSummary");
+  const isDraft = !validation.ok;
+  const warningText = isDraft
+    ? "🟡 Borrador incompleto. Se guardará en Google Sheets para que puedas seguir otro día. Faltan: " + validation.missing.slice(0,10).join(" · ") + (validation.missing.length > 10 ? "..." : "") + "."
+    : "👀 Último vistazo. Si después dices “yo no puse eso”, esta pantalla declarará en tu contra.";
   if (review) review.innerHTML = `
-    <div class="review-warning">👀 Último vistazo. Si después dices “yo no puse eso”, esta pantalla declarará en tu contra.</div>
+    <div class="review-warning">${escapeHtml(warningText)}</div>
     <div class="review-grid">
+      <div><span class="label">Estado</span><strong>${isDraft ? "Borrador incompleto" : "Porra completa"}</strong></div>
       <div><span class="label">Jugador</span><strong>${escapeHtml(state.player)}</strong></div>
       <div><span class="label">Partidos fase grupos</span><strong>${msDone}/${WC_DATA.matches.length}</strong></div>
       <div><span class="label">Final</span><strong>${escapeHtml(finalists)}</strong></div>
@@ -1570,6 +1601,10 @@ function showReviewModal(prediction){
       <div><span class="label">Mejor joven</span><strong>${escapeHtml((aw.bestYoung || []).filter(Boolean).join(", "))}</strong></div>
       <div><span class="label">11 ideal</span><strong>${(aw.bestXI || []).filter(Boolean).length}/11 jugadores</strong></div>
     </div>`;
+  const confirmBtn = document.getElementById("confirmSaveBtn");
+  if (confirmBtn) confirmBtn.textContent = validation.ok
+    ? "Confirmar y guardar, responsable del entregable"
+    : "Guardar borrador incompleto en Google Sheets";
   document.getElementById("reviewModal")?.classList.remove("hidden");
 }
 

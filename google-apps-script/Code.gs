@@ -82,11 +82,13 @@ function login_(body) {
   const pinHash = hash_(pin);
   if (!user) {
     if (mode === "edit") throw new Error("No existe ningún jugador con ese nombre. Usa 'Nuevo usuario' para crearlo.");
-    appendRow_(SHEETS.users, [keyName_(name), name, pinHash, now_(), now_(), "", "", body.avatar || "🐀"]);
-    upsertParticipant_(name, { avatar: body.avatar || "🐀" });
+    const avatar = body.avatar || "🐀";
+    appendRow_(SHEETS.users, [keyName_(name), name, pinHash, now_(), now_(), "", "", avatar]);
+    upsertParticipant_(name, { avatar });
+    notifyNewUser_(name, avatar);
     log_("login:create", name, "Usuario creado");
     appendHistory_(name, "usuario creado", "Alta de nuevo jugador", "", "");
-    return { name, created: true, prediction: null, avatar: body.avatar || "🐀" };
+    return { name, created: true, prediction: null, avatar };
   }
   if (String(user.pinReset).toLowerCase() === "true") {
     updateUser_(name, { pinHash, pinReset: "", updatedAt: now_() });
@@ -571,3 +573,28 @@ function headToHeadCompare_(a,b,results){
 function teamOrder_(team){
   const keys=Object.keys(GROUPS); for(let g of keys){ const idx=GROUPS[g].indexOf(team); if(idx>=0) return idx; } return 99;
 }
+
+function notifyNewUser_(name, avatar) {
+  const recipient = "iker.ituarte.tejedor@gmail.com";
+  const subject = "Nuevo registro en ExSys World Cup 26";
+  const body =
+    "Se ha registrado un nuevo jugador en ExSys World Cup 26.\n\n" +
+    "Jugador: " + name + "\n" +
+    "Perfil/avatar: " + (avatar || "No indicado") + "\n" +
+    "Fecha: " + Utilities.formatDate(new Date(), "Europe/Madrid", "dd/MM/yyyy HH:mm:ss") + "\n\n" +
+    "Ya tienes otro valiente dispuesto a equivocarse con total convicción.\n\n" +
+    "Mensaje automático de la porra.";
+
+  try {
+    MailApp.sendEmail(recipient, subject, body);
+    log_("mail:newUser", name, "Aviso de nuevo usuario enviado a " + recipient);
+  } catch (err) {
+    // No bloqueamos el alta del usuario si falla el email.
+    log_("mail:error", name, String(err && err.message ? err.message : err));
+  }
+}
+
+function testNotifyNewUser() {
+  notifyNewUser_("TEST CORREO", "🧪");
+}
+
