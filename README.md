@@ -296,3 +296,12 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 - Se mantienen las correcciones anteriores: guardado de borradores incompletos, fecha límite 11/06/2026 20:30, desempates FIFA 2026 y bloqueo backend de predicciones antes del cierre.
 
 Nota: la app sigue usando una asignación compatible para mejores terceros cuando no está cargada la matriz FIFA completa de combinaciones. Los placeholders visuales de cada cruce ya quedan alineados con el bracket publicado.
+
+
+## v39 - Ranking sin puntos ficticios antes del Mundial
+
+- Corregido el cálculo del ranking cuando todavía no hay resultados reales.
+- Antes, aunque la hoja `Resultados` estuviera vacía, la app podía conceder puntos de clasificación de grupos usando el orden base de los equipos.
+- Ahora los puntos por 1º, 2º y 3º de grupo solo se conceden cuando ese grupo tiene sus 6 partidos reales completos.
+- Los puntos por marcador de partido se siguen concediendo partido a partido cuando el admin introduzca resultados reales.
+- Para recalcular una base ya publicada, despliega el nuevo `Code.gs` y guarda resultados vacíos desde el panel admin, o borra `Ranking` y fuerza un recálculo.
