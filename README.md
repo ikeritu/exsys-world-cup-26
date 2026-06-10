@@ -276,4 +276,12 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 - El backend ya no devuelve predicciones de otros participantes antes del cierre de edición. Antes estaba oculto en la interfaz, pero podía verse inspeccionando la respuesta de red.
 - El hash del justificante se recalcula después de marcar la porra como `draft` o `complete`, para que el resguardo refleje el objeto final guardado.
 - El código de registro de ExSys usa prefijo `EX-` en lugar de `CR-`.
-- Cache-busting actualizado a `v36-audit-hardening`.
+- Cache-busting actualizado a `v37-fifa-tiebreakers`.
+
+
+## v37 - Criterios FIFA 2026
+
+- Corregido el orden de desempate de grupos según FIFA 2026: puntos, enfrentamientos directos entre equipos empatados, diferencia de goles total, goles a favor totales y ranking FIFA como fallback.
+- Corregido el desempate de mejores terceros: puntos, diferencia de goles, goles a favor y ranking FIFA como fallback.
+- Limitación documentada: la app no registra tarjetas/fair play, por lo que ese criterio se omite antes del ranking FIFA.
+- Frontend, admin y backend quedan alineados en los mismos criterios.

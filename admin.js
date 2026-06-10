@@ -326,25 +326,39 @@ function escapeAttr(s){
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;");
 }
-function compareTeamsAdmin(a,b){
-  const base = (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf);
-  if (base !== 0) return base;
-  const h = headToHeadCompareAdmin(a,b);
-  if (h !== 0) return h;
-  return adminTeamOrder(a.team) - adminTeamOrder(b.team) || String(a.team).localeCompare(String(b.team));
-}
+const FIFA_RANKING_FALLBACK_ADMIN = {
+  "Argentina":1, "France":2, "Spain":3, "England":4, "Brazil":5, "Portugal":6, "Netherlands":7, "Belgium":8, "Germany":9, "Croatia":10,
+  "Morocco":11, "Uruguay":12, "Colombia":13, "United States":14, "Mexico":15, "Switzerland":16, "Japan":17, "Senegal":18, "Iran":19, "Korea Republic":20,
+  "Australia":21, "Ecuador":22, "Austria":23, "Türkiye":24, "Côte d’Ivoire":25, "Egypt":26, "Norway":27, "Algeria":28, "Canada":29, "Scotland":30,
+  "Czechia":31, "Ghana":32, "Sweden":33, "Tunisia":34, "Paraguay":35, "Qatar":36, "South Africa":37, "Saudi Arabia":38, "New Zealand":39, "Panama":40,
+  "Haiti":41, "Jordan":42, "Uzbekistan":43, "Iraq":44, "Cabo Verde":45, "Bosnia and Herzegovina":46, "Congo DR":47, "Curaçao":48
+};
+function fifaRankOrderAdmin(team){ return FIFA_RANKING_FALLBACK_ADMIN[team] || 999; }
 function adminTeamOrder(team){ for (const g of Object.keys(WC_DATA.groups).sort()) { const idx=(WC_DATA.groups[g]||[]).indexOf(team); if (idx>=0) return idx; } return 99; }
-function headToHeadCompareAdmin(a,b){
-  const g = a.group || b.group;
-  let A={pts:0,gf:0,ga:0}, B={pts:0,gf:0,ga:0};
-  WC_DATA.matches.filter(m => m.group===g && [m.home,m.away].includes(a.team) && [m.home,m.away].includes(b.team)).forEach(m => {
-    const sc = getAdminResultsFromInputs()[m.id]; if (!sc) return;
-    const hg=Number(sc.home), ag=Number(sc.away), aHome=m.home===a.team;
-    const agf=aHome?hg:ag, bgf=aHome?ag:hg;
-    A.gf+=agf; A.ga+=bgf; B.gf+=bgf; B.ga+=agf;
-    if (agf>bgf) A.pts+=3; else if (agf<bgf) B.pts+=3; else {A.pts++;B.pts++;}
+function compareThirdTeamsAdminFifa(a,b){
+  return (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf) || (fifaRankOrderAdmin(a.team)-fifaRankOrderAdmin(b.team)) || adminTeamOrder(a.team)-adminTeamOrder(b.team) || String(a.team).localeCompare(String(b.team));
+}
+function compareTeamsAdminFifa(a,b,groupRows){
+  if (b.pts !== a.pts) return b.pts - a.pts;
+  const tied=(groupRows||[]).filter(t=>t.pts===a.pts).map(t=>t.team);
+  if(tied.length>1){
+    const h2h=headToHeadMiniTableAdmin(a.group||b.group,tied);
+    const A=h2h[a.team]||{pts:0,gf:0,ga:0,gd:0}, B=h2h[b.team]||{pts:0,gf:0,ga:0,gd:0};
+    const cmp=(B.pts-A.pts)||(B.gd-A.gd)||(B.gf-A.gf);
+    if(cmp!==0) return cmp;
+  }
+  return (b.gd-a.gd) || (b.gf-a.gf) || (fifaRankOrderAdmin(a.team)-fifaRankOrderAdmin(b.team)) || adminTeamOrder(a.team)-adminTeamOrder(b.team) || String(a.team).localeCompare(String(b.team));
+}
+function headToHeadMiniTableAdmin(group,teams){
+  const set=new Set(teams), mini={}; teams.forEach(team=>mini[team]={team,pts:0,gf:0,ga:0,gd:0});
+  const results=getAdminResultsFromInputs();
+  WC_DATA.matches.filter(m=>m.group===group && set.has(m.home) && set.has(m.away)).forEach(m=>{
+    const sc=results[m.id]; if(!sc) return; const h=Number(sc.home), a=Number(sc.away);
+    mini[m.home].gf+=h; mini[m.home].ga+=a; mini[m.away].gf+=a; mini[m.away].ga+=h;
+    mini[m.home].gd=mini[m.home].gf-mini[m.home].ga; mini[m.away].gd=mini[m.away].gf-mini[m.away].ga;
+    if(h>a) mini[m.home].pts+=3; else if(h<a) mini[m.away].pts+=3; else {mini[m.home].pts++; mini[m.away].pts++;}
   });
-  return (B.pts-A.pts) || ((B.gf-B.ga)-(A.gf-A.ga)) || (B.gf-A.gf);
+  return mini;
 }
 function calculateStandingsFromResults(results){
   const groups = {};
@@ -357,7 +371,7 @@ function calculateStandingsFromResults(results){
     groups[g][m.home].gd=groups[g][m.home].gf-groups[g][m.home].ga; groups[g][m.away].gd=groups[g][m.away].gf-groups[g][m.away].ga;
     if(h>a) groups[g][m.home].pts+=3; else if(h<a) groups[g][m.away].pts+=3; else {groups[g][m.home].pts++; groups[g][m.away].pts++;}
   });
-  const out={}; Object.keys(groups).sort().forEach(g => out[g]=Object.values(groups[g]).sort(compareTeamsAdmin)); return out;
+  const out={}; Object.keys(groups).sort().forEach(g => { const rows=Object.values(groups[g]); out[g]=rows.sort((a,b)=>compareTeamsAdminFifa(a,b,rows)); }); return out;
 }
 function buildThirdAssignmentsAdmin(bestThirdGroups){
   const slots = window.KNOCKOUT_SLOTS?.r32 || [];
@@ -403,7 +417,7 @@ function getRealR32FromResults(results){
   const thirds=[];
   const thirdByGroup={};
   Object.keys(tables).sort().forEach(g => { if(tables[g]?.[2]) { thirds.push(tables[g][2]); thirdByGroup[g]=tables[g][2]; } });
-  thirds.sort(compareTeamsAdmin);
+  thirds.sort(compareThirdTeamsAdminFifa);
   const bestThirdGroups = new Set(thirds.slice(0,8).map(t=>t.group));
   const thirdAssignments = buildThirdAssignmentsAdmin(bestThirdGroups);
   const resolve = (token, slotIndex) => {

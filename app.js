@@ -1250,12 +1250,19 @@ function randomCompleteAwardsAndXI(mode="conservador"){
    ============================== */
 const V14_MAX_GOALS = 30;
 
-function compareTeams(a,b){
-  const base = (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf);
-  if (base !== 0) return base;
-  const h = headToHeadCompare(a, b);
-  if (h !== 0) return h;
-  return groupTeamOrder(a.team) - groupTeamOrder(b.team) || a.team.localeCompare(b.team);
+// v37: criterios FIFA 2026.
+// Grupos: puntos -> enfrentamientos directos entre empatados -> DG total -> GF total -> ranking FIFA fallback.
+// Nota: la app no registra fair play/tarjetas, por lo que ese criterio se salta y se usa ranking FIFA configurable.
+const FIFA_RANKING_FALLBACK = {
+  "Argentina":1, "France":2, "Spain":3, "England":4, "Brazil":5, "Portugal":6, "Netherlands":7, "Belgium":8, "Germany":9, "Croatia":10,
+  "Morocco":11, "Uruguay":12, "Colombia":13, "United States":14, "Mexico":15, "Switzerland":16, "Japan":17, "Senegal":18, "Iran":19, "Korea Republic":20,
+  "Australia":21, "Ecuador":22, "Austria":23, "Türkiye":24, "Côte d’Ivoire":25, "Egypt":26, "Norway":27, "Algeria":28, "Canada":29, "Scotland":30,
+  "Czechia":31, "Ghana":32, "Sweden":33, "Tunisia":34, "Paraguay":35, "Qatar":36, "South Africa":37, "Saudi Arabia":38, "New Zealand":39, "Panama":40,
+  "Haiti":41, "Jordan":42, "Uzbekistan":43, "Iraq":44, "Cabo Verde":45, "Bosnia and Herzegovina":46, "Congo DR":47, "Curaçao":48
+};
+
+function fifaRankOrder(team){
+  return FIFA_RANKING_FALLBACK[team] || 999;
 }
 
 function groupTeamOrder(team){
@@ -1266,21 +1273,42 @@ function groupTeamOrder(team){
   return 99;
 }
 
-function headToHeadCompare(a,b){
-  const g = a.group || b.group;
-  const matches = WC_DATA.matches.filter(m => m.group === g && [m.home,m.away].includes(a.team) && [m.home,m.away].includes(b.team));
-  let A={pts:0,gf:0,ga:0}, B={pts:0,gf:0,ga:0};
-  matches.forEach(m => {
-    const sc = state.scores[m.id] || {};
-    if (sc.home === null || sc.home === undefined || sc.away === null || sc.away === undefined) return;
-    const hg=Number(sc.home), ag=Number(sc.away);
-    const aHome = m.home === a.team;
-    const agf = aHome ? hg : ag, aga = aHome ? ag : hg;
-    const bgf = aHome ? ag : hg, bga = aHome ? hg : ag;
-    A.gf += agf; A.ga += aga; B.gf += bgf; B.ga += bga;
-    if (agf > bgf) A.pts += 3; else if (agf < bgf) B.pts += 3; else { A.pts++; B.pts++; }
-  });
-  return (B.pts-A.pts) || ((B.gf-B.ga)-(A.gf-A.ga)) || (B.gf-A.gf);
+function compareThirdTeamsFifa(a,b){
+  return (b.pts-a.pts) || (b.gd-a.gd) || (b.gf-a.gf) || (fifaRankOrder(a.team)-fifaRankOrder(b.team)) || groupTeamOrder(a.team)-groupTeamOrder(b.team) || a.team.localeCompare(b.team);
+}
+
+function compareTeamsFifa(a,b, groupRows){
+  if (b.pts !== a.pts) return b.pts - a.pts;
+  const tied = (groupRows || []).filter(t => t.pts === a.pts).map(t => t.team);
+  if (tied.length > 1) {
+    const h2h = headToHeadMiniTable(a.group || b.group, tied);
+    const A = h2h[a.team] || {pts:0,gf:0,ga:0,gd:0};
+    const B = h2h[b.team] || {pts:0,gf:0,ga:0,gd:0};
+    const h2hCmp = (B.pts-A.pts) || (B.gd-A.gd) || (B.gf-A.gf);
+    if (h2hCmp !== 0) return h2hCmp;
+  }
+  return (b.gd-a.gd) || (b.gf-a.gf) || (fifaRankOrder(a.team)-fifaRankOrder(b.team)) || groupTeamOrder(a.team)-groupTeamOrder(b.team) || a.team.localeCompare(b.team);
+}
+
+function headToHeadMiniTable(group, teams){
+  const set = new Set(teams);
+  const mini = {};
+  teams.forEach(team => mini[team] = { team, pts:0, gf:0, ga:0, gd:0 });
+  WC_DATA.matches
+    .filter(m => m.group === group && set.has(m.home) && set.has(m.away))
+    .forEach(m => {
+      const sc = state.scores[m.id] || {};
+      if (sc.home === null || sc.home === undefined || sc.away === null || sc.away === undefined) return;
+      const h = Number(sc.home), a = Number(sc.away);
+      mini[m.home].gf += h; mini[m.home].ga += a;
+      mini[m.away].gf += a; mini[m.away].ga += h;
+      mini[m.home].gd = mini[m.home].gf - mini[m.home].ga;
+      mini[m.away].gd = mini[m.away].gf - mini[m.away].ga;
+      if (h > a) mini[m.home].pts += 3;
+      else if (h < a) mini[m.away].pts += 3;
+      else { mini[m.home].pts += 1; mini[m.away].pts += 1; }
+    });
+  return mini;
 }
 
 function calculateStandings(){
@@ -1301,7 +1329,7 @@ function calculateStandings(){
     else { home.pts += 1; away.pts += 1; }
   });
   const out = {};
-  GROUP_ORDER.forEach(g => out[g] = Object.values(tables[g]).sort(compareTeams));
+  GROUP_ORDER.forEach(g => { const rows = Object.values(tables[g]); out[g] = rows.sort((a,b) => compareTeamsFifa(a,b,rows)); });
   return out;
 }
 
@@ -1313,7 +1341,7 @@ function getQualifiedTeams(){
     const third = tables[g]?.[2];
     if (third) { thirdCandidates.push(third); thirdByGroup[g] = third; }
   });
-  thirdCandidates.sort(compareTeams);
+  thirdCandidates.sort(compareThirdTeamsFifa);
   const bestThirdGroups = thirdCandidates.slice(0,8).map(t => t.group);
   const thirdAssignments = buildThirdAssignments(bestThirdGroups);
   const resolveToken = (token, slotIndex) => {
