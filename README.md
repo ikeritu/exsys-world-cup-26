@@ -305,3 +305,13 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - Ahora los puntos por 1º, 2º y 3º de grupo solo se conceden cuando ese grupo tiene sus 6 partidos reales completos.
 - Los puntos por marcador de partido se siguen concediendo partido a partido cuando el admin introduzca resultados reales.
 - Para recalcular una base ya publicada, despliega el nuevo `Code.gs` y guarda resultados vacíos desde el panel admin, o borra `Ranking` y fuerza un recálculo.
+
+
+## v40 - Ranking en vivo y sin puntos fantasma
+
+- El ranking ya no depende únicamente de la hoja `Ranking` guardada en Google Sheets.
+- `listRanking_()` recalcula los puntos en vivo desde `Predicciones`, `Resultados` y `Premios`.
+- Si la hoja `Resultados` está vacía, todos los participantes aparecen con 0 puntos aunque la hoja `Ranking` tuviera datos antiguos de pruebas.
+- `adminSaveResults_()` normaliza los resultados y elimina entradas vacías antes de guardar.
+- Se mantiene la regla v39: las posiciones de grupo solo puntúan cuando los 6 partidos reales del grupo están completos.
+- Para limpiar una clasificación antigua, basta con desplegar este `Code.gs` y refrescar la web; opcionalmente, guardar resultados vacíos desde el panel admin reescribe también la hoja `Ranking`.
