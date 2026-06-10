@@ -315,3 +315,10 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - `adminSaveResults_()` normaliza los resultados y elimina entradas vacías antes de guardar.
 - Se mantiene la regla v39: las posiciones de grupo solo puntúan cuando los 6 partidos reales del grupo están completos.
 - Para limpiar una clasificación antigua, basta con desplegar este `Code.gs` y refrescar la web; opcionalmente, guardar resultados vacíos desde el panel admin reescribe también la hoja `Ranking`.
+
+
+## v41 - Corrección visual de cabecera hero
+
+- Corregido un error introducido en v40: las clases CSS de la cabecera hero habían quedado renombradas con el sufijo de cache (`v40-ranking-live-reset`) y no coincidían con las clases existentes en `style.css`, por lo que el logo aparecía gigante y la cabecera perdía el diseño premium.
+- Se restauran las clases visuales `v32` de la cabecera y se mantiene el cache-busting como `v41-hero-class-fix`.
+- Se mantienen las correcciones anteriores: ranking sin puntos fantasma, guardado de borradores incompletos, fecha límite 11/06/2026 20:30, desempates FIFA y bracket v38.
