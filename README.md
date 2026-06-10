@@ -285,3 +285,14 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 - Corregido el desempate de mejores terceros: puntos, diferencia de goles, goles a favor y ranking FIFA como fallback.
 - Limitación documentada: la app no registra tarjetas/fair play, por lo que ese criterio se omite antes del ranking FIFA.
 - Frontend, admin y backend quedan alineados en los mismos criterios.
+
+
+## v38 - Bracket FIFA visual real
+
+- Ajustado el cuadro de dieciseisavos contra el calendario visual FIFA/20minutos aportado para la fase final del Mundial 2026.
+- Corregido el cruce **1A vs 3º E/F/G/H/I**.
+- Corregido el cruce **1K vs 3º E/H/I/J/K**.
+- Actualizados `data/worldcup2026.js`, `index.html` y `admin.html` con cache-busting `v38-bracket-fifa-visual-real`.
+- Se mantienen las correcciones anteriores: guardado de borradores incompletos, fecha límite 11/06/2026 20:30, desempates FIFA 2026 y bloqueo backend de predicciones antes del cierre.
+
+Nota: la app sigue usando una asignación compatible para mejores terceros cuando no está cargada la matriz FIFA completa de combinaciones. Los placeholders visuales de cada cruce ya quedan alineados con el bracket publicado.
