@@ -11,7 +11,7 @@ window.APP_CONFIG = {
   ACCESS_KEY: "exsys26",
 
   // 3) Límite de edición de predicciones.
-  EDIT_DEADLINE_ISO: "2026-06-10T23:59:59+02:00",
+  EDIT_DEADLINE_ISO: "2026-06-11T20:30:00+02:00",
 
   // 4) Hash de la clave admin SOLO para desbloqueo visual local.
   // La clave real se valida en Google Apps Script con Script Properties.

@@ -1,4 +1,13 @@
-# ExSys World Cup 26
+# ExSys World Cup 26 — v35 deadline + save fix
+
+Corrección v35:
+
+- Fecha límite actualizada a **11 de junio de 2026 a las 20:30**.
+- Mantiene guardado de borradores incompletos en Google Sheets.
+- Corrige el guardado de eliminatorias completas y premios: ya no se recalcula el bracket justo antes de guardar.
+- Cache-busting actualizado a `v35-deadline-11jun-2030-save-fix`.
+
+
 
 Porra privada del Mundial 2026 para jugar con amigos, con fase de grupos, bracket de eliminatorias, premios individuales, 11 ideal, ranking y panel de administrador.
 
@@ -160,7 +169,7 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 - Añadido aviso por email al registrarse un usuario nuevo.
 - `notifyNewUser_()` no bloquea el alta si falla el envío de email; deja registro en `Logs`.
 - Añadido `google-apps-script/appsscript.json` con permisos explícitos de Sheets y envío de correo.
-- Actualizado cache-busting a `v33-draft-save`.
+- Actualizado cache-busting a `v35-deadline-11jun-2030-save-fix`.
 - Ejecutada auditoría básica de sintaxis JS sobre `app.js`, `admin.js`, `config.js`, `worldcup2026.js` y `Code.gs`.
 
 

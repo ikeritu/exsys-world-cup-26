@@ -511,7 +511,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function updateStatus(){
   const cp = $("#currentPlayer"); if (cp) cp.textContent = state.player || "No identificado";
-  const es = $("#editStatus"); if (es) es.textContent = isEditOpen() ? "Abierta hasta 10/06/2026" : "Cerrada";
+  const es = $("#editStatus"); if (es) es.textContent = isEditOpen() ? "Abierta hasta 11/06/2026 20:30" : "Cerrada";
   const ss = $("#submittedStatus");
   if (ss) {
     if (!state.prediction) ss.textContent = "Pendiente";
@@ -1496,6 +1496,10 @@ function selectThirdPlace(team){
   renderBracket(); scheduleDraftAutosave(); renderProgressDashboard(); renderMySummary();
 }
 
+function cloneArray(arr){
+  return Array.isArray(arr) ? arr.filter(v => v !== undefined && v !== null).map(v => String(v)) : [];
+}
+
 function collectPrediction(){
   rememberVisibleScores();
   const fd = new FormData(document.getElementById("predictionForm"));
@@ -1504,21 +1508,30 @@ function collectPrediction(){
     const sc = state.scores[m.id] || {};
     matchScores[m.id] = { home: sc.home ?? null, away: sc.away ?? null };
   });
+
   const standings = calculateStandings();
   const groupPositions = {};
   GROUP_ORDER.forEach(g => groupPositions[g] = (standings[g] || []).slice(0,3).map(x=>x.team));
-  syncBracketWithGroups();
+
+  // v35: misma corrección que CaraRatas v34/v35.
+  // No llamamos a syncBracketWithGroups() justo antes de guardar porque puede recalcular
+  // dieciseisavos y limpiar rondas ya elegidas. Para persistir se guarda una foto exacta
+  // de lo seleccionado por el usuario: octavos, cuartos, semifinales, finalistas,
+  // campeón, tercer puesto y premios.
+  const ko = state.knockout || {};
+  const r32 = getQualifiedTeams();
+
   return {
     matchScores,
     groupPositions,
     knockout: {
-      r32: state.knockout.r32 || [],
-      r16: state.knockout.r16 || [],
-      qf: state.knockout.qf || [],
-      sf: state.knockout.sf || [],
-      finalists: state.knockout.final || [],
-      champion: state.knockout.champion || [],
-      third: state.knockout.third || []
+      r32,
+      r16: cloneArray(ko.r16),
+      qf: cloneArray(ko.qf),
+      sf: cloneArray(ko.sf),
+      finalists: cloneArray(ko.final || ko.finalists),
+      champion: cloneArray(ko.champion),
+      third: cloneArray(ko.third)
     },
     meta: {
       avatar: state.avatar || "🐀"
