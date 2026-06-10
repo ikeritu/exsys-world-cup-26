@@ -270,3 +270,10 @@ https://TU_USUARIO.github.io/TU_REPO/?clave=exsys26
 ## v31
 - Corregido error del panel admin: `escapeAttr is not defined`.
 - Añadida función `escapeAttr()` en `admin.js` y cache-busting nuevo.
+
+## v36 - Auditoría y endurecimiento
+
+- El backend ya no devuelve predicciones de otros participantes antes del cierre de edición. Antes estaba oculto en la interfaz, pero podía verse inspeccionando la respuesta de red.
+- El hash del justificante se recalcula después de marcar la porra como `draft` o `complete`, para que el resguardo refleje el objeto final guardado.
+- El código de registro de ExSys usa prefijo `EX-` en lugar de `CR-`.
+- Cache-busting actualizado a `v36-audit-hardening`.

@@ -804,6 +804,7 @@ async function savePrediction(ev){
   prediction.meta = prediction.meta || {};
   prediction.meta.completionStatus = validation.ok ? "complete" : "draft";
   prediction.meta.missing = validation.missing || [];
+  prediction = refreshPredictionHash(prediction);
 
   if (!validation.ok) {
     renderCompletionChecklist();
@@ -940,7 +941,7 @@ function simpleHash(str){
 function registrationCode(name, iso){
   const d=new Date(iso); const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0"), hh=String(d.getHours()).padStart(2,"0"), mi=String(d.getMinutes()).padStart(2,"0");
   const slug=String(name||"RATA").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]/g,"").toUpperCase().slice(0,10) || "RATA";
-  return `CR-${slug}-${yyyy}${mm}${dd}-${hh}${mi}`;
+  return `EX-${slug}-${yyyy}${mm}${dd}-${hh}${mi}`;
 }
 function attachPredictionMetadata(pred){
   const now=new Date().toISOString();
@@ -954,10 +955,17 @@ function attachPredictionMetadata(pred){
   };
   const clone=JSON.parse(JSON.stringify(pred));
   clone.meta=meta;
-  const forHash=JSON.parse(JSON.stringify(clone)); delete forHash.meta.predictionHash;
-  clone.meta.predictionHash=simpleHash(JSON.stringify(forHash));
   clone.updatedAt=now;
-  return clone;
+  return refreshPredictionHash(clone);
+}
+
+function refreshPredictionHash(pred){
+  const clone = JSON.parse(JSON.stringify(pred || {}));
+  clone.meta = clone.meta || {};
+  delete clone.meta.predictionHash;
+  pred.meta = pred.meta || {};
+  pred.meta.predictionHash = simpleHash(JSON.stringify(clone));
+  return pred;
 }
 function renderReceipt(pred){
   const el=document.getElementById("predictionReceipt"); if(!el) return;
