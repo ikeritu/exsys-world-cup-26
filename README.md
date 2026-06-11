@@ -368,3 +368,10 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - Los inputs de partidos se renderizan con `value` directamente desde los marcadores persistidos.
 - El progreso, la clasificación automática y el guardado usan `state.prediction.matchScores` como fallback seguro.
 - Mantiene las correcciones anteriores de borradores, bracket, desempates FIFA, fecha límite y ranking sin puntos fantasma.
+
+
+## v48 - Fix visual de cabecera + hidratación de grupos
+
+- Se restauran las clases visuales `v32` de la cabecera hero para que el CSS vuelva a aplicarse correctamente.
+- Se conserva la corrección de hidratación de marcadores guardados desde `prediction.matchScores`, evitando que los resultados de fase de grupos guardados en Google Sheets aparezcan vacíos al volver a entrar.
+- Cache-busting actualizado a `v48-hero-fixed-score-hydration`.
