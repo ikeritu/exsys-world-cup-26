@@ -332,3 +332,12 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - Al guardar, también se capturan todos los inputs de marcador renderizados, no solo el grupo activo.
 - Recalculado el hash del justificante después de marcar la predicción como `draft` o `complete`, para que el justificante represente exactamente lo guardado.
 - Cache-busting actualizado a `v43-group-restore-audit`.
+
+
+## v44 - Corrección navegación de grupos y restauración de marcadores
+
+- Corregido un fallo introducido en la recuperación de marcadores: al entrar en un grupo, la restauración visual podía mutar `state.scores` y dejar grupos no visibles como vacíos.
+- Ahora cambiar de grupo guarda primero en memoria los marcadores visibles antes de repintar el DOM.
+- `restoreVisibleScores()` ya no normaliza ni sobrescribe el estado global; solo vuelca los valores guardados a los inputs visibles.
+- `fillScoresOnly()` ya no rellena con `null` partidos que no vienen en la fuente parcial; solo fusiona valores realmente recibidos.
+- Se mantiene todo lo anterior: guardado de borradores incompletos, fecha límite 11/06/2026 20:30, bracket v38, desempates FIFA y ranking sin puntos fantasma.

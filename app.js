@@ -310,7 +310,11 @@ function getScoreValue(name){
   if (!el || el.value === "") return null;
   return Number(el.value);
 }
-function restoreVisibleScores(){ fillScoresOnly({ matchScores: state.scores }); }
+function restoreVisibleScores(){
+  // v44: restaurar la pantalla NO debe normalizar ni mutar state.scores.
+  // En v43 esto podía convertir grupos no visibles en null al navegar entre grupos.
+  applyScoresToVisibleInputs();
+}
 
 
 
@@ -411,7 +415,20 @@ function fillForm(pred){
   renderMySummary();
 }
 function fillScoresOnly(pred){
-  state.scores = { ...(state.scores || {}), ...normalizeSavedMatchScores(pred) };
+  const source = pred?.matchScores || pred?.scores || pred?.groupScores || pred?.matches || {};
+  const next = { ...(state.scores || {}) };
+  Object.entries(source || {}).forEach(([id, raw]) => {
+    if (!raw || typeof raw !== "object") return;
+    const homeRaw = raw.home ?? raw.h ?? raw.local ?? raw.homeGoals ?? null;
+    const awayRaw = raw.away ?? raw.a ?? raw.visitante ?? raw.awayGoals ?? null;
+    const home = homeRaw === "" || homeRaw === null || homeRaw === undefined ? null : Number(homeRaw);
+    const away = awayRaw === "" || awayRaw === null || awayRaw === undefined ? null : Number(awayRaw);
+    next[String(id)] = {
+      home: Number.isNaN(home) ? null : home,
+      away: Number.isNaN(away) ? null : away
+    };
+  });
+  state.scores = next;
   applyScoresToVisibleInputs();
 }
 
@@ -618,6 +635,9 @@ function renderGroupCards(){
     </button>`;
   }).join("");
   $$(".group-tile", container).forEach(btn => btn.addEventListener("click", () => {
+    // v44: antes de cambiar de grupo, persistimos en memoria lo que haya escrito
+    // en el grupo visible. Si no, al repintar el DOM se pierden marcadores no guardados.
+    rememberVisibleScores();
     state.activeGroup = btn.dataset.group;
     renderGroupCards(); renderActiveGroup(); renderMySummary(); renderProgressDashboard();
     $("#groupEditorCard").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -626,6 +646,8 @@ function renderGroupCards(){
 }
 
 function goToNextIncompleteGroup(){
+  // v44: mismo criterio que al pinchar tarjeta de grupo: guardar en memoria lo visible antes de navegar.
+  rememberVisibleScores();
   const next = GROUP_ORDER.find(g => groupCompletion(g) < 6) || GROUP_ORDER[0];
   state.activeGroup = next;
   renderGroupCards(); renderActiveGroup();
