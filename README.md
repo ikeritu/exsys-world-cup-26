@@ -341,3 +341,12 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - `restoreVisibleScores()` ya no normaliza ni sobrescribe el estado global; solo vuelca los valores guardados a los inputs visibles.
 - `fillScoresOnly()` ya no rellena con `null` partidos que no vienen en la fuente parcial; solo fusiona valores realmente recibidos.
 - Se mantiene todo lo anterior: guardado de borradores incompletos, fecha límite 11/06/2026 20:30, bracket v38, desempates FIFA y ranking sin puntos fantasma.
+
+
+## v45 - Corrección crítica de navegación entre grupos
+
+- Corregido un fallo crítico por el que al entrar en otro grupo se podían borrar marcadores ya introducidos.
+- La causa era que la app cambiaba `state.activeGroup` antes de renderizar los inputs del nuevo grupo; algunas funciones de progreso intentaban guardar el grupo nuevo antes de que existiera en pantalla y escribían `null`.
+- `rememberVisibleScores()` ahora guarda únicamente los inputs que existen realmente en el DOM.
+- Durante la carga de una predicción guardada se activa una protección de hidratación para no leer inputs antiguos o vacíos mientras se repinta la interfaz.
+- Se mantienen las correcciones anteriores: guardado de borradores, fecha límite 11/06/2026 20:30, ranking sin puntos fantasma, desempates FIFA, bracket visual validado y bloqueo backend de predicciones antes del cierre.

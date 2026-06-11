@@ -14,6 +14,8 @@ const state = {
   pendingPrediction: null
 };
 
+let isHydratingPrediction = false;
+
 const GROUP_ORDER = Object.keys(WC_DATA.groups).sort();
 const TEAM_FLAG_CODES = {
   "Mexico":"mx", "South Africa":"za", "Korea Republic":"kr", "Czechia":"cz",
@@ -244,13 +246,18 @@ function playerSlot([pos, num, label]){
 
 
 function rememberVisibleScores(){
-  WC_DATA.matches.filter(m => m.group === state.activeGroup).forEach(m => {
-    const h = document.querySelector(`[name="m${m.id}_home"]`);
-    const a = document.querySelector(`[name="m${m.id}_away"]`);
-    state.scores[m.id] = {
-      home: h && h.value !== "" ? Number(h.value) : null,
-      away: a && a.value !== "" ? Number(a.value) : null
-    };
+  // v45 CRÍTICO: no usar state.activeGroup para decidir qué guardar.
+  // Durante algunos repintados se cambiaba state.activeGroup antes de pintar el nuevo grupo;
+  // entonces la función buscaba inputs del grupo nuevo que aún no existían y escribía null,
+  // borrando marcadores en memoria. Ahora solo persistimos inputs que EXISTEN en el DOM.
+  if (isHydratingPrediction) return;
+  document.querySelectorAll(".score-input").forEach(input => {
+    const m = /^m(\d+)_(home|away)$/.exec(input.name || "");
+    if (!m) return;
+    const id = String(m[1]);
+    const side = m[2];
+    state.scores[id] ||= { home:null, away:null };
+    state.scores[id][side] = input.value === "" ? null : Number(input.value);
   });
 }
 
@@ -384,32 +391,35 @@ function applyScoresToVisibleInputs(){
 function fillForm(pred){
   if (!pred) return;
 
-  // v43: al volver a entrar, la predicción del servidor debe hidratar primero state.scores.
-  // Las cajas de fase de grupos se re-renderizan por pestaña/grupo; si solo escribimos en los
-  // inputs existentes, los grupos no visibles pueden parecer vacíos al navegar.
-  // Por eso normalizamos todos los marcadores guardados y los dejamos en state.scores antes
-  // de pintar tarjetas, tabla del grupo activo y bracket.
-  state.scores = normalizeSavedMatchScores(pred);
+  // v45 CRÍTICO: hidratar una predicción guardada no puede leer inputs antiguos/blancos
+  // ni mutar state.scores mientras se repinta la interfaz. Si no, al volver a entrar
+  // se podían borrar los marcadores de grupos antes de mostrarlos.
+  isHydratingPrediction = true;
+  try {
+    state.scores = normalizeSavedMatchScores(pred);
 
-  state.knockout = { ...(pred.knockout || {}) };
-  if (state.knockout.finalists && !state.knockout.final) state.knockout.final = state.knockout.finalists;
+    state.knockout = { ...(pred.knockout || {}) };
+    if (state.knockout.finalists && !state.knockout.final) state.knockout.final = state.knockout.finalists;
 
-  renderGroupCards();
-  renderActiveGroup();
-  applyScoresToVisibleInputs();
+    renderGroupCards();
+    renderActiveGroup();
+    applyScoresToVisibleInputs();
 
-  // Recalcula solo los dieciseisavos a partir de los marcadores ya hidratados, manteniendo las
-  // rondas posteriores guardadas si siguen siendo coherentes.
-  syncBracketWithGroups();
-  renderBracket();
+    // Recalcula solo dieciseisavos desde los marcadores hidratados, manteniendo rondas posteriores
+    // guardadas si siguen siendo coherentes.
+    syncBracketWithGroups();
+    renderBracket();
 
-  const set = (name, value) => { const el = document.querySelector(`[name="${CSS.escape(name)}"]`); if (el) el.value = value ?? ""; };
-  const aw = pred.awards || {};
-  (aw.goldenBoot || []).forEach((v,i)=>set(`goldenBoot${i+1}`, v));
-  (aw.goldenBall || []).forEach((v,i)=>set(`goldenBall${i+1}`, v));
-  (aw.goldenGlove || []).forEach((v,i)=>set(`goldenGlove${i+1}`, v));
-  (aw.bestYoung || []).forEach((v,i)=>set(`bestYoung${i+1}`, v));
-  (aw.bestXI || []).forEach((v,i)=>set(`bestXI_${i+1}`, v));
+    const set = (name, value) => { const el = document.querySelector(`[name="${CSS.escape(name)}"]`); if (el) el.value = value ?? ""; };
+    const aw = pred.awards || {};
+    (aw.goldenBoot || []).forEach((v,i)=>set(`goldenBoot${i+1}`, v));
+    (aw.goldenBall || []).forEach((v,i)=>set(`goldenBall${i+1}`, v));
+    (aw.goldenGlove || []).forEach((v,i)=>set(`goldenGlove${i+1}`, v));
+    (aw.bestYoung || []).forEach((v,i)=>set(`bestYoung${i+1}`, v));
+    (aw.bestXI || []).forEach((v,i)=>set(`bestXI_${i+1}`, v));
+  } finally {
+    isHydratingPrediction = false;
+  }
 
   renderProgressDashboard();
   renderMySummary();
@@ -1599,18 +1609,12 @@ function cloneArray(arr){
 }
 
 function rememberRenderedScoreInputs(){
-  document.querySelectorAll(".score-input").forEach(input => {
-    const m = /^m(\d+)_(home|away)$/.exec(input.name || "");
-    if (!m) return;
-    const id = m[1], side = m[2];
-    state.scores[id] ||= { home:null, away:null };
-    state.scores[id][side] = input.value === "" ? null : Number(input.value);
-  });
+  // v45: compatibilidad. La captura real de inputs visibles vive en rememberVisibleScores().
+  rememberVisibleScores();
 }
 
 function collectPrediction(){
   rememberVisibleScores();
-  rememberRenderedScoreInputs();
   const fd = new FormData(document.getElementById("predictionForm"));
   const matchScores = {};
   WC_DATA.matches.forEach(m => {
