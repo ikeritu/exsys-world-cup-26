@@ -351,11 +351,54 @@ function notifyDraftIfExists(){
   if (raw) setMsg($("#saveMsg"), "Tienes un borrador local guardado. Pulsa 'Recuperar borrador' si quieres cargarlo.", true);
 }
 
+function normalizeSavedMatchScores(pred){
+  const source = pred?.matchScores || pred?.scores || pred?.groupScores || pred?.matches || {};
+  const out = {};
+  WC_DATA.matches.forEach(m => {
+    const raw = source[m.id] || source[String(m.id)] || {};
+    const homeRaw = raw.home ?? raw.h ?? raw.local ?? raw.homeGoals ?? null;
+    const awayRaw = raw.away ?? raw.a ?? raw.visitante ?? raw.awayGoals ?? null;
+    const home = homeRaw === "" || homeRaw === null || homeRaw === undefined ? null : Number(homeRaw);
+    const away = awayRaw === "" || awayRaw === null || awayRaw === undefined ? null : Number(awayRaw);
+    out[m.id] = {
+      home: Number.isNaN(home) ? null : home,
+      away: Number.isNaN(away) ? null : away
+    };
+  });
+  return out;
+}
+
+function applyScoresToVisibleInputs(){
+  Object.entries(state.scores || {}).forEach(([id,sc]) => {
+    const h = document.querySelector(`[name="m${CSS.escape(id)}_home"]`);
+    const a = document.querySelector(`[name="m${CSS.escape(id)}_away"]`);
+    if (h) h.value = sc?.home ?? "";
+    if (a) a.value = sc?.away ?? "";
+  });
+}
+
 function fillForm(pred){
   if (!pred) return;
-  fillScoresOnly(pred);
+
+  // v43: al volver a entrar, la predicción del servidor debe hidratar primero state.scores.
+  // Las cajas de fase de grupos se re-renderizan por pestaña/grupo; si solo escribimos en los
+  // inputs existentes, los grupos no visibles pueden parecer vacíos al navegar.
+  // Por eso normalizamos todos los marcadores guardados y los dejamos en state.scores antes
+  // de pintar tarjetas, tabla del grupo activo y bracket.
+  state.scores = normalizeSavedMatchScores(pred);
+
   state.knockout = { ...(pred.knockout || {}) };
   if (state.knockout.finalists && !state.knockout.final) state.knockout.final = state.knockout.finalists;
+
+  renderGroupCards();
+  renderActiveGroup();
+  applyScoresToVisibleInputs();
+
+  // Recalcula solo los dieciseisavos a partir de los marcadores ya hidratados, manteniendo las
+  // rondas posteriores guardadas si siguen siendo coherentes.
+  syncBracketWithGroups();
+  renderBracket();
+
   const set = (name, value) => { const el = document.querySelector(`[name="${CSS.escape(name)}"]`); if (el) el.value = value ?? ""; };
   const aw = pred.awards || {};
   (aw.goldenBoot || []).forEach((v,i)=>set(`goldenBoot${i+1}`, v));
@@ -363,16 +406,13 @@ function fillForm(pred){
   (aw.goldenGlove || []).forEach((v,i)=>set(`goldenGlove${i+1}`, v));
   (aw.bestYoung || []).forEach((v,i)=>set(`bestYoung${i+1}`, v));
   (aw.bestXI || []).forEach((v,i)=>set(`bestXI_${i+1}`, v));
-  renderGroupCards(); renderActiveGroup(); syncBracketWithGroups(); renderBracket();
+
+  renderProgressDashboard();
+  renderMySummary();
 }
 function fillScoresOnly(pred){
-  Object.entries(pred.matchScores || {}).forEach(([id,sc]) => {
-    state.scores[id] = { home: sc.home ?? null, away: sc.away ?? null };
-    const h = document.querySelector(`[name="m${CSS.escape(id)}_home"]`);
-    const a = document.querySelector(`[name="m${CSS.escape(id)}_away"]`);
-    if (h) h.value = sc.home ?? "";
-    if (a) a.value = sc.away ?? "";
-  });
+  state.scores = { ...(state.scores || {}), ...normalizeSavedMatchScores(pred) };
+  applyScoresToVisibleInputs();
 }
 
 
@@ -1536,8 +1576,19 @@ function cloneArray(arr){
   return Array.isArray(arr) ? arr.filter(v => v !== undefined && v !== null).map(v => String(v)) : [];
 }
 
+function rememberRenderedScoreInputs(){
+  document.querySelectorAll(".score-input").forEach(input => {
+    const m = /^m(\d+)_(home|away)$/.exec(input.name || "");
+    if (!m) return;
+    const id = m[1], side = m[2];
+    state.scores[id] ||= { home:null, away:null };
+    state.scores[id][side] = input.value === "" ? null : Number(input.value);
+  });
+}
+
 function collectPrediction(){
   rememberVisibleScores();
+  rememberRenderedScoreInputs();
   const fd = new FormData(document.getElementById("predictionForm"));
   const matchScores = {};
   WC_DATA.matches.forEach(m => {

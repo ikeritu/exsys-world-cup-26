@@ -322,3 +322,13 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - Corregido un error introducido en v40: las clases CSS de la cabecera hero habían quedado renombradas con el sufijo de cache (`v40-ranking-live-reset`) y no coincidían con las clases existentes en `style.css`, por lo que el logo aparecía gigante y la cabecera perdía el diseño premium.
 - Se restauran las clases visuales `v32` de la cabecera y se mantiene el cache-busting como `v41-hero-class-fix`.
 - Se mantienen las correcciones anteriores: ranking sin puntos fantasma, guardado de borradores incompletos, fecha límite 11/06/2026 20:30, desempates FIFA y bracket v38.
+
+
+## v43 - Restauración de fase de grupos y auditoría extra
+
+- Corregida la carga de resultados de fase de grupos al volver a entrar con nombre y PIN.
+- La predicción guardada hidrata primero `state.scores` con los 72 partidos y después repinta tarjetas, grupo activo, standings y bracket.
+- Añadida lectura defensiva de marcadores guardados aunque las claves vengan como número o texto.
+- Al guardar, también se capturan todos los inputs de marcador renderizados, no solo el grupo activo.
+- Recalculado el hash del justificante después de marcar la predicción como `draft` o `complete`, para que el justificante represente exactamente lo guardado.
+- Cache-busting actualizado a `v43-group-restore-audit`.
