@@ -230,11 +230,16 @@ function renderBestXI(){
     ["POR",1,"Portero"], ["LD",2,"Lateral derecho"], ["DFC",3,"Central derecho"], ["DFC",4,"Central izquierdo"], ["LI",5,"Lateral izquierdo"],
     ["MC",6,"Medio derecho"], ["MC",7,"Medio centro"], ["MC",8,"Medio izquierdo"], ["ED",9,"Extremo derecho"], ["DC",10,"Delantero centro"], ["EI",11,"Extremo izquierdo"]
   ];
+  const byNum = n => positions.find(p => p[1] === n);
+  const forwards = [11,10,9].map(byNum);
+  const midfielders = [8,7,6].map(byNum);
+  const defenders = [5,4,3,2].map(byNum);
+  const goalkeeper = [1].map(byNum);
   $("#bestXIFormation").innerHTML = `
-    <div class="pitch-line forwards">${positions.filter(p=>["ED","DC","EI"].includes(p[0])).map(playerSlot).join("")}</div>
-    <div class="pitch-line midfielders">${positions.filter(p=>p[0]==="MC").map(playerSlot).join("")}</div>
-    <div class="pitch-line defenders">${positions.filter(p=>["LD","DFC","LI"].includes(p[0])).map(playerSlot).join("")}</div>
-    <div class="pitch-line goalkeeper">${positions.filter(p=>p[0]==="POR").map(playerSlot).join("")}</div>`;
+    <div class="pitch-line forwards">${forwards.map(playerSlot).join("")}</div>
+    <div class="pitch-line midfielders">${midfielders.map(playerSlot).join("")}</div>
+    <div class="pitch-line defenders">${defenders.map(playerSlot).join("")}</div>
+    <div class="pitch-line goalkeeper">${goalkeeper.map(playerSlot).join("")}</div>`;
 }
 function playerSlot([pos, num, label]){
   return `<label class="player-slot"><span>${pos}</span><input name="bestXI_${num}" placeholder="${label}" /></label>`;
