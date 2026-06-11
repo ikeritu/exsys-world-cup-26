@@ -134,7 +134,7 @@ function bindUI(){
 
   $("#predictionForm").addEventListener("input", ev => {
     if (ev.target.matches(".score-input")) {
-      rememberVisibleScores();
+      updateScoreFromInput(ev.target, true);
       renderGroupCards();
       renderActiveStandings();
       syncBracketWithGroups();
@@ -184,7 +184,7 @@ async function login(){
     const data = await api("login", { name, pin, mode: state.authMode, avatar: state.avatar });
     state.player = data.name;
     state.pin = pin;
-    state.prediction = data.prediction || null;
+    state.prediction = data.prediction ? mergeLocalDraftScoresIfServerLooksEmpty(data.prediction) : null;
     if (data.avatar) state.avatar = data.avatar;
     setMsg(msg, data.created ? "Usuario creado. Acuérdate de tu PIN." : "Has entrado correctamente.", true);
     if (state.prediction) fillForm(state.prediction);
@@ -246,19 +246,57 @@ function playerSlot([pos, num, label]){
 
 
 function rememberVisibleScores(){
-  // v45 CRÍTICO: no usar state.activeGroup para decidir qué guardar.
-  // Durante algunos repintados se cambiaba state.activeGroup antes de pintar el nuevo grupo;
-  // entonces la función buscaba inputs del grupo nuevo que aún no existían y escribía null,
-  // borrando marcadores en memoria. Ahora solo persistimos inputs que EXISTEN en el DOM.
+  // v46 EMERGENCIA: navegar entre grupos NUNCA debe borrar datos guardados.
+  // Solo persistimos inputs visibles con valor. Los vacíos no pisan valores previos,
+  // salvo cuando el usuario los borra explícitamente en un evento input/change.
   if (isHydratingPrediction) return;
   document.querySelectorAll(".score-input").forEach(input => {
-    const m = /^m(\d+)_(home|away)$/.exec(input.name || "");
-    if (!m) return;
-    const id = String(m[1]);
-    const side = m[2];
-    state.scores[id] ||= { home:null, away:null };
-    state.scores[id][side] = input.value === "" ? null : Number(input.value);
+    if (input.value === "") return;
+    updateScoreFromInput(input, false);
   });
+}
+
+function updateScoreFromInput(input, allowClear=true){
+  const m = /^m(\d+)_(home|away)$/.exec(input?.name || "");
+  if (!m) return;
+  const id = String(m[1]);
+  const side = m[2];
+  state.scores[id] ||= { home:null, away:null };
+  if (input.value === "") {
+    if (allowClear) state.scores[id][side] = null;
+    return;
+  }
+  const n = Number(input.value);
+  state.scores[id][side] = Number.isNaN(n) ? null : n;
+}
+
+function countCompletedScoresInPrediction(pred){
+  const scores = normalizeSavedMatchScores(pred || {});
+  return WC_DATA.matches.filter(m => scores[m.id]?.home !== null && scores[m.id]?.away !== null).length;
+}
+
+function mergeLocalDraftScoresIfServerLooksEmpty(pred){
+  // Si el servidor trae knockouts/premios pero 0 marcadores, intentamos rescatar
+  // el borrador local del mismo navegador, que normalmente conserva lo escrito ayer.
+  const serverDone = countCompletedScoresInPrediction(pred);
+  if (serverDone > 0) return pred;
+  try {
+    const raw = localStorage.getItem(draftKey());
+    if (!raw) return pred;
+    const draft = JSON.parse(raw);
+    const draftPred = draft.prediction || {};
+    const draftDone = countCompletedScoresInPrediction(draftPred);
+    if (draftDone <= 0) return pred;
+    const merged = JSON.parse(JSON.stringify(pred || {}));
+    merged.matchScores = JSON.parse(JSON.stringify(draftPred.matchScores || {}));
+    merged.groupPositions = JSON.parse(JSON.stringify(draftPred.groupPositions || merged.groupPositions || {}));
+    merged.meta = { ...(merged.meta || {}), recoveredFromLocalDraft: true, recoveredAt: new Date().toISOString() };
+    toast(`He recuperado ${draftDone}/72 partidos desde tu borrador local. Pulsa Guardar avance / porra para consolidarlo.`, "warn");
+    return merged;
+  } catch(e) {
+    console.warn("No se pudo recuperar borrador local", e);
+    return pred;
+  }
 }
 
 
@@ -594,7 +632,7 @@ async function refreshState(){
   if (!state.player || !state.pin) return;
   try {
     const data = await api("getState", { name: state.player, pin: state.pin });
-    state.prediction = data.myPrediction || state.prediction;
+    state.prediction = data.myPrediction ? mergeLocalDraftScoresIfServerLooksEmpty(data.myPrediction) : state.prediction;
     state.server = { predictions: data.predictions || [], ranking: data.ranking || [], results: data.results || {}, awards: data.awards || {}, participants: data.participants || [], pot: data.pot || {} };
     renderRanking(); renderFriendsPredictions(); renderMySummary(); renderGlobalStats(); renderCompare(); renderParticipants(); renderCommandCenter(); renderLiveImpact(); updateStatus();
   } catch(e) { console.warn(e); }
@@ -1616,11 +1654,19 @@ function rememberRenderedScoreInputs(){
 function collectPrediction(){
   rememberVisibleScores();
   const fd = new FormData(document.getElementById("predictionForm"));
-  const matchScores = {};
+  let matchScores = {};
   WC_DATA.matches.forEach(m => {
-    const sc = state.scores[m.id] || {};
+    const sc = state.scores[m.id] || state.scores[String(m.id)] || {};
     matchScores[m.id] = { home: sc.home ?? null, away: sc.away ?? null };
   });
+  // v46 seguro anti-sobrescritura: si por un fallo de hidratación el estado actual
+  // quedara vacío pero la predicción previa tenía marcadores, NO enviamos 72 nulls.
+  const currentDone = WC_DATA.matches.filter(m => matchScores[m.id].home !== null && matchScores[m.id].away !== null).length;
+  const previousDone = state.prediction ? countCompletedScoresInPrediction(state.prediction) : 0;
+  if (currentDone === 0 && previousDone > 0) {
+    matchScores = normalizeSavedMatchScores(state.prediction);
+    toast("Protección activada: no se han sobrescrito los marcadores guardados con campos vacíos.", "warn");
+  }
 
   const standings = calculateStandings();
   const groupPositions = {};
@@ -1769,4 +1815,180 @@ async function api(action, payload={}){
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || "Error desconocido");
   return data;
+}
+
+
+/* =========================
+   v47 EMERGENCIA: hidratación robusta de marcadores guardados
+   =========================
+   Problema real detectado: la predicción guardada en Google Sheets sí contiene
+   matchScores completos, pero al revisar la porra el render de grupos podía leer
+   un state.scores vacío/parcial y pintar los inputs sin valor. Al entrar en un
+   grupo, el estado visual pasaba de 6/6 a 0/6 aunque el JSON persistido era bueno.
+
+   Solución: la pantalla y el progreso leen siempre con fallback desde
+   state.prediction.matchScores. Navegar por grupos nunca puede convertir una
+   predicción persistida con 72 marcadores en una pantalla vacía.
+*/
+function getPersistedScoreById(matchId){
+  const id = String(matchId);
+  const local = state.scores && (state.scores[id] || state.scores[Number(id)]);
+  const savedSource = state.prediction && (state.prediction.matchScores || state.prediction.scores || state.prediction.groupScores || state.prediction.matches) || {};
+  const saved = savedSource[id] || savedSource[Number(id)] || null;
+  const norm = (raw) => {
+    if (!raw || typeof raw !== "object") return { home:null, away:null };
+    const homeRaw = raw.home ?? raw.h ?? raw.local ?? raw.homeGoals ?? null;
+    const awayRaw = raw.away ?? raw.a ?? raw.visitante ?? raw.awayGoals ?? null;
+    const home = homeRaw === "" || homeRaw === null || homeRaw === undefined ? null : Number(homeRaw);
+    const away = awayRaw === "" || awayRaw === null || awayRaw === undefined ? null : Number(awayRaw);
+    return { home:Number.isNaN(home) ? null : home, away:Number.isNaN(away) ? null : away };
+  };
+  const l = norm(local);
+  const s = norm(saved);
+  return {
+    home: l.home !== null && l.home !== undefined ? l.home : s.home,
+    away: l.away !== null && l.away !== undefined ? l.away : s.away
+  };
+}
+
+function getScoreValue(name){
+  const match = /^m(\d+)_(home|away)$/.exec(name);
+  if (match) {
+    const sc = getPersistedScoreById(match[1]);
+    const v = sc[match[2]];
+    if (v !== null && v !== undefined && !Number.isNaN(Number(v))) return Number(v);
+  }
+  const el = document.querySelector(`[name="${CSS.escape(name)}"]`);
+  if (!el || el.value === "") return null;
+  const n = Number(el.value);
+  return Number.isNaN(n) ? null : n;
+}
+
+function groupCompletion(group){
+  return WC_DATA.matches.filter(m => {
+    const sc = getPersistedScoreById(m.id);
+    return sc.home !== null && sc.away !== null && sc.home !== undefined && sc.away !== undefined;
+  }).filter(m => m.group === group).length;
+}
+
+function groupCompletionAll(){
+  return WC_DATA.matches.filter(m => {
+    const sc = getPersistedScoreById(m.id);
+    return sc.home !== null && sc.away !== null && sc.home !== undefined && sc.away !== undefined;
+  }).length;
+}
+
+function applyScoresToVisibleInputs(){
+  document.querySelectorAll(".score-input").forEach(input => {
+    const m = /^m(\d+)_(home|away)$/.exec(input.name || "");
+    if (!m) return;
+    const sc = getPersistedScoreById(m[1]);
+    const v = sc[m[2]];
+    input.value = v === null || v === undefined ? "" : String(v);
+  });
+}
+
+function rememberVisibleScores(){
+  // Solo lee inputs que existen realmente en pantalla. No toca otros grupos.
+  if (isHydratingPrediction) return;
+  document.querySelectorAll(".score-input").forEach(input => {
+    if (input.value === "") return;
+    updateScoreFromInput(input, false);
+  });
+}
+
+function renderActiveGroup(){
+  const group = state.activeGroup;
+  const label = document.getElementById("activeGroupLabel");
+  if (label) label.textContent = group;
+  const matches = WC_DATA.matches.filter(m => m.group === group).sort((a,b)=>a.id-b.id);
+  const container = document.getElementById("activeGroupMatches");
+  if (!container) return;
+  container.innerHTML = `<div class="match-cards">${matches.map(m => {
+    const sc = getPersistedScoreById(m.id);
+    const hv = sc.home === null || sc.home === undefined ? "" : String(sc.home);
+    const av = sc.away === null || sc.away === undefined ? "" : String(sc.away);
+    return `
+    <div class="match-card" data-match-id="${m.id}">
+      <div class="date-badge"><strong>${dayOfMonth(m.date)}</strong><span>${monthDay(m.date)}</span></div>
+      <div class="team team-home"><span class="flag-inline">${flag(m.home)}</span><strong>${escapeHtml(displayTeam(m.home))}</strong></div>
+      <div class="score-box"><input class="score-input" type="number" min="0" inputmode="numeric" name="m${m.id}_home" value="${escapeAttr(hv)}" aria-label="Goles ${escapeAttr(displayTeam(m.home))}" /> <span>-</span> <input class="score-input" type="number" min="0" inputmode="numeric" name="m${m.id}_away" value="${escapeAttr(av)}" aria-label="Goles ${escapeAttr(displayTeam(m.away))}" /></div>
+      <div class="team team-away"><strong>${escapeHtml(displayTeam(m.away))}</strong><span class="flag-inline">${flag(m.away)}</span></div>
+      <div class="match-meta">Partido ${m.id} · ${escapeHtml(m.city)} · ${escapeHtml(m.venue)}</div>
+    </div>`;
+  }).join("")}</div>`;
+  renderActiveStandings();
+}
+
+function fillForm(pred){
+  if (!pred) return;
+  isHydratingPrediction = true;
+  try {
+    state.prediction = pred;
+    state.scores = normalizeSavedMatchScores(pred);
+    state.knockout = { ...(pred.knockout || {}) };
+    if (state.knockout.finalists && !state.knockout.final) state.knockout.final = state.knockout.finalists;
+
+    renderGroupCards();
+    renderActiveGroup();
+    syncBracketWithGroups();
+    renderBracket();
+
+    const set = (name, value) => { const el = document.querySelector(`[name="${CSS.escape(name)}"]`); if (el) el.value = value ?? ""; };
+    const aw = pred.awards || {};
+    (aw.goldenBoot || []).forEach((v,i)=>set(`goldenBoot${i+1}`, v));
+    (aw.goldenBall || []).forEach((v,i)=>set(`goldenBall${i+1}`, v));
+    (aw.goldenGlove || []).forEach((v,i)=>set(`goldenGlove${i+1}`, v));
+    (aw.bestYoung || []).forEach((v,i)=>set(`bestYoung${i+1}`, v));
+    (aw.bestXI || []).forEach((v,i)=>set(`bestXI_${i+1}`, v));
+  } finally {
+    isHydratingPrediction = false;
+  }
+  renderProgressDashboard();
+  renderMySummary();
+}
+
+function collectPrediction(){
+  rememberVisibleScores();
+  let matchScores = {};
+  WC_DATA.matches.forEach(m => {
+    const sc = getPersistedScoreById(m.id);
+    matchScores[m.id] = { home: sc.home ?? null, away: sc.away ?? null };
+  });
+
+  const currentDone = WC_DATA.matches.filter(m => matchScores[m.id].home !== null && matchScores[m.id].away !== null).length;
+  const previousDone = state.prediction ? countCompletedScoresInPrediction(state.prediction) : 0;
+  if (currentDone === 0 && previousDone > 0) {
+    matchScores = normalizeSavedMatchScores(state.prediction);
+    toast("Protección activada: no se han sobrescrito los marcadores guardados con campos vacíos.", "warn");
+  }
+
+  const standings = calculateStandings();
+  const groupPositions = {};
+  GROUP_ORDER.forEach(g => groupPositions[g] = (standings[g] || []).slice(0,3).map(x=>x.team));
+
+  const ko = state.knockout || {};
+  const r32 = getQualifiedTeams();
+  const fd = new FormData(document.getElementById("predictionForm"));
+
+  return {
+    matchScores,
+    groupPositions,
+    knockout: {
+      r32,
+      r16: cloneArray(ko.r16),
+      qf: cloneArray(ko.qf),
+      sf: cloneArray(ko.sf),
+      finalists: cloneArray(ko.final || ko.finalists),
+      champion: cloneArray(ko.champion),
+      third: cloneArray(ko.third)
+    },
+    awards: {
+      goldenBoot: [fd.get("goldenBoot1"), fd.get("goldenBoot2"), fd.get("goldenBoot3")].map(clean),
+      goldenBall: [fd.get("goldenBall1"), fd.get("goldenBall2"), fd.get("goldenBall3")].map(clean),
+      goldenGlove: [fd.get("goldenGlove1"), fd.get("goldenGlove2"), fd.get("goldenGlove3")].map(clean),
+      bestYoung: [fd.get("bestYoung1"), fd.get("bestYoung2"), fd.get("bestYoung3")].map(clean),
+      bestXI: Array.from({length:11},(_,i)=>clean(fd.get(`bestXI_${i+1}`)))
+    }
+  };
 }

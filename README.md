@@ -350,3 +350,21 @@ Nota: la app sigue usando una asignación compatible para mejores terceros cuand
 - `rememberVisibleScores()` ahora guarda únicamente los inputs que existen realmente en el DOM.
 - Durante la carga de una predicción guardada se activa una protección de hidratación para no leer inputs antiguos o vacíos mientras se repinta la interfaz.
 - Se mantienen las correcciones anteriores: guardado de borradores, fecha límite 11/06/2026 20:30, ranking sin puntos fantasma, desempates FIFA, bracket visual validado y bloqueo backend de predicciones antes del cierre.
+
+
+## v46 - Recuperación urgente de grupos y protección anti-borrado
+
+- Corregida la navegación entre grupos para que entrar en una tarjeta no sobrescriba marcadores guardados con campos vacíos.
+- La app solo actualiza resultados de grupos cuando el usuario escribe o borra explícitamente un marcador.
+- Añadida protección en guardado para no enviar 72 marcadores vacíos si existía una predicción previa con resultados.
+- Si la predicción del servidor aparece sin marcadores pero existe un borrador local con partidos, la web intenta recuperarlos automáticamente y avisa al usuario para que guarde de nuevo.
+- Para recuperar datos ya sobrescritos en Google Sheets, usar la pestaña Historial y restaurar el último `newJson`/`oldJson` que tenga `matchScores` completos.
+
+
+## v47 - Recuperación robusta de marcadores guardados
+
+- Corrección crítica: si `Predicciones.predictionJson` contiene `matchScores`, la pantalla de grupos los usa como fuente de respaldo aunque `state.scores` esté vacío o parcial.
+- Entrar en un grupo ya no puede convertir un grupo completo `6/6` en `0/6`.
+- Los inputs de partidos se renderizan con `value` directamente desde los marcadores persistidos.
+- El progreso, la clasificación automática y el guardado usan `state.prediction.matchScores` como fallback seguro.
+- Mantiene las correcciones anteriores de borradores, bracket, desempates FIFA, fecha límite y ranking sin puntos fantasma.
